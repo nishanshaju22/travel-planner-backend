@@ -1,8 +1,32 @@
 import { prisma } from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
+import validator from "validator";
 
 async function register(name, email, password, res) {
+
+    if (!validator.isEmail(email)) {
+        throw new Error("The email provided is not a valid email");
+    }
+
+    if (!validator.isAlpha(name, 'en-US', { ignore: '_- ' })) {
+        throw new Error('Error: Name contains invalid characters');
+    }
+
+    if (nameLast.length < 2 || nameLast.length > 50) {
+        throw new Error('Error: Name is either too large or too small');
+    }
+
+    if (password.length < 6) {
+        throw new Error('Error: password is too small');
+    }
+
+    const isValid = /^(?=.*[A-Za-z])(?=.*\d).+$/.test(password);
+
+    if (!isValid) {
+        throw new Error("The password entred must contain at least one letter and one number");
+    }
+
     const userExists = await prisma.user.findUnique({
         where: {email: email },
     })
