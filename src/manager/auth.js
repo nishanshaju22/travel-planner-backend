@@ -13,7 +13,7 @@ async function register(name, email, password, res) {
         throw new Error('Error: Name contains invalid characters');
     }
 
-    if (nameLast.length < 2 || nameLast.length > 50) {
+    if (name.length < 2 || name.length > 50) {
         throw new Error('Error: Name is either too large or too small');
     }
 
