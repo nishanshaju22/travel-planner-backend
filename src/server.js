@@ -3,6 +3,8 @@ import { config } from 'dotenv'
 import { connectDB, disconnectDB } from './config/db.js'
 import cors from 'cors'
 import authRoutes from './routes/authRoutes.js'
+import userRoutes from './routes/userRoutes.js'
+import tripRoutes from './routes/tripRoutes.js'
 
 config()
 connectDB()
@@ -19,6 +21,7 @@ app.use(express.urlencoded({ extended: true }))
 
 app.use('/auth', authRoutes)
 app.use('/user', userRoutes)
+app.use('/trip', tripRoutes)
 
 const PORT = 5001
 app.listen(PORT, () => {
