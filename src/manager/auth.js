@@ -36,13 +36,13 @@ async function register(name, email, password, res) {
 	}
 
 	const salt = await bcrypt.genSalt(10)
-	const hashedPasswrod = await bcrypt.hash(password, salt)
+	const hashedPassword = await bcrypt.hash(password, salt)
 
 	const user = await prisma.user.create({
 		data: {
 			name,
 			email,
-			password: hashedPasswrod,
+			password: hashedPassword,
 		},
 	})
 
