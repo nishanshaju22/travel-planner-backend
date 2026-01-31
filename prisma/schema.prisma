@@ -13,14 +13,97 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-
 model User {
-    id        String   @id @default(uuid())
-    name      String
-    email     String   @unique
-    password  String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    id              String           @id @default(uuid())
+    name            String
+    email           String           @unique
+    password        String
+    createdAt       DateTime         @default(now())
+    updatedAt       DateTime         @updatedAt
+
+    preferences     UserPreference[] 
+    trips           Trip[]
 
     @@index([email])
+}
+
+enum LocationType {
+    CITY
+    TOWN
+    COUNTRY
+    STATE
+    VILLAGE
+    ATTRACTION
+}
+
+model Location {
+    id        String       @id @default(uuid())
+    name      String
+    type      LocationType
+    latitude  Float
+    longitude Float
+
+    tripStops TripStop[]
+}
+
+model Trip {
+    id          String     @id @default(uuid())
+    userId      String
+    name        String
+    createdAt   DateTime   @default(now())
+    updatedAt   DateTime   @updatedAt
+    plannedDate DateTime?
+
+    user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    stops       TripStop[]
+}
+
+model TripStop {
+    id         String    @id @default(uuid())
+    tripId     String
+    locationId String
+    
+    days       Int[]
+    location   Location  @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+    trip       Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+    @@unique([tripId, locationId])
+    @@index([tripId])
+    @@index([locationId])
+}
+
+enum AccomType {
+    HOTEL
+    BACKPACKING
+    NONE
+    RESORT
+    VILLA
+    CAMPING
+    AIRBNB
+}
+
+enum Transportation {
+    CAR
+    PUBLIC
+    PLANE
+    TRAIN
+    NONE
+}
+
+model UserPreference {
+    id                        String           @id @default(uuid())
+    userId                    String
+    profilePic                String?
+    budgetMax                 Int?
+    currency                  String?
+    accommodationPreference   AccomType[]
+    transportationPreference  Transportation[]
+    dietaryRestriction        String[]
+    accessibilityNeeds        String[]
+
+    user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
 }
