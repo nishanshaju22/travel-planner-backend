@@ -1,61 +1,105 @@
 import { prisma } from '../config/db.js'
+import { validateFutureDate, getUserTripOrThrow, assertNoTripOnDate } from '../utils/tripValidators.js'
 
-export async function createTrip(userId, name, plannedDate, plannedDuration) { 
-    plannedDate = new Date(plannedDate)
-    
-    if (isNaN(plannedDate)) {
-        throw new Error('Please provide a valid date.')
-    }
+export async function createTrip(userId, name, plannedDate, plannedDuration) {
+	const date = validateFutureDate(plannedDate)
 
-    if (plannedDate < new Date()) {
-        throw new Error('The planned date must be in the future.')
-    }
+	if (plannedDuration <= 0) {
+		throw new Error('The duration must be greater than 0.')
+	}
 
-    if (plannedDuration <= 0) {
-        throw new Error('The duration must be greater than 0.')
-    }
+	await assertNoTripOnDate(prisma, userId, date)
 
-    const startOfDay = new Date(plannedDate)
-    startOfDay.setHours(0, 0, 0, 0)
+	const trip = await prisma.trip.create({
+		data: {
+			name,
+			userId,
+			plannedDate: date,
+			plannedDuration: Number(plannedDuration),
+		},
+	})
 
-    const endOfDay = new Date(plannedDate)
-    endOfDay.setHours(23, 59, 59, 999)
-
-    const existingTrip = await prisma.trip.findFirst({
-        where: {
-        userId,
-        plannedDate: {
-            gte: startOfDay,
-            lte: endOfDay
-        }
-        }
-    })
-
-    if (existingTrip) {
-        throw new Error("You already have a trip planned for this date.")
-    }
-
-    const trip = await prisma.trip.create({
-        data: {
-            name: name,
-            userId: userId,
-            plannedDate: new Date(plannedDate),
-            plannedDuration: Number(plannedDuration)
-        }
-    })
-
-    const data = {
+	return {
 		status: 'success',
 		data: {
-			trip: {
-				name: trip.name,
-                plannedDate: trip.plannedDate,
-                plannedDuration: trip.plannedDuration,
-                createdAt: trip.createdAt,
-                updatedAt: trip.updatedAt
-			},
+			trip,
 		},
 	}
-    
-    return data
+}
+
+export async function getAllTrips(userId) {
+	const trips = await prisma.trip.findMany({
+		where: { userId },
+		orderBy: { plannedDate: 'asc' },
+	})
+
+	return {
+		status: 'success',
+		data: {
+			trips,
+		},
+	}
+}
+
+export async function getTrip(userId, tripId) {
+	const trip = await getUserTripOrThrow(prisma, userId, tripId)
+
+	return {
+		status: 'success',
+		data: {
+			trip,
+		},
+	}
+}
+
+export async function updateTrip(
+	userId,
+	tripId,
+	{ name, plannedDate, plannedDuration },
+) {
+	await getUserTripOrThrow(prisma, userId, tripId)
+
+	const data = {}
+
+	if (name !== undefined) {
+		data.name = name
+	}
+
+	if (plannedDate !== undefined) {
+		const date = validateFutureDate(plannedDate)
+		await assertNoTripOnDate(prisma, userId, date, tripId)
+		data.plannedDate = date
+	}
+
+	if (plannedDuration !== undefined) {
+		if (plannedDuration <= 0) {
+			throw new Error('The duration must be greater than 0.')
+		}
+		data.plannedDuration = Number(plannedDuration)
+	}
+
+	const trip = await prisma.trip.update({
+		where: { id: tripId },
+		data,
+	})
+
+	return {
+		status: 'success',
+		data: {
+			trip,
+		},
+	}
+}
+
+export async function deleteTrip(userId, tripId) {
+	await getUserTripOrThrow(prisma, userId, tripId)
+
+	await prisma.trip.delete({
+		where: { id: tripId },
+	})
+
+	return {
+		status: 'success',
+		message: 'Trip deleted successfully.',
+	}
 }

@@ -1,11 +1,17 @@
 import express from 'express'
-import { createTripController } from '../controllers/tripController.js'
+import { createTripController,getAllTripsController, getTripController, updateTripController, deleteTripController } from '../controllers/tripController.js'
 import { authMiddleware } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 
-router.get('/create/:userId', authMiddleware, createTripController)
+router.post('/user/:userId/trips', createTripController)
 
-router.post('/create/:userId', authMiddleware, createTripController)
+router.get('/user/:userId/trips', getAllTripsController)
+
+router.get('/user/:userId/trips/:tripId', getTripController)
+
+router.patch('/user/:userId/trips/:tripId', updateTripController)
+
+router.delete('/user/:userId/trips/:tripId', deleteTripController)
 
 export default router
