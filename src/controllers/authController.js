@@ -23,13 +23,17 @@ async function loginController(req, res) {
 }
 
 async function logoutController(req, res) {
-    res.cookie("jwt", "", {
+    res.cookie('jwt', '', {
         httpOnly: true,
-        expires: new Date(0)
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 0,
     });
+
     res.status(200).json({
-        status: "success",
-        message: "Logged out successfully"
+        status: 'success',
+        message: 'Logged out successfully',
     });
 }
 

@@ -46,7 +46,7 @@ async function register(name, email, password, res) {
         }
     });
     
-    generateToken(user.id, res);
+    generateToken(user.id, email, res);
 
     const data = {
         status: "success",
@@ -77,7 +77,7 @@ async function login(email, password, res) {
         throw new Error("Invalid email or password");
     }
     
-    generateToken(user.id, res);
+    generateToken(user.id, email, res);
 
     const data = {
         status: "success",
