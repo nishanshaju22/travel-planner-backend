@@ -7,12 +7,10 @@ export function generateToken(userId, email, res) {
 		expiresIn: process.env.JWT_EXPIRES_IN || '7d',
 	})
 
-	console.log(token)
-
 	res.cookie('jwt', token, {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === 'production',
-		sameSite: 'strict',
+		sameSite: 'none',
 		path: '/',
 		maxAge: (1000 * 60 * 60 * 24) * 7,
 	})
