@@ -7,11 +7,11 @@ import {
 } from '../manager/trip.js'
 
 async function createTripController(req, res) {
-	const userId = req.params.userId
-	const { name, plannedDate, plannedDuration } = req.body
+	const ownerId = req.params.userId
+	const { name, plannedDate, plannedDuration, memberIds } = req.body
 
 	try {
-		const result = await createTrip(userId, name, plannedDate, plannedDuration)
+		const result = await createTrip(ownerId, name, plannedDate, plannedDuration, memberIds)
 		return res.status(201).json(result)
 	} catch (error) {
 		return res.status(400).json({ error: error.message })
@@ -19,10 +19,10 @@ async function createTripController(req, res) {
 }
 
 async function getAllTripsController(req, res) {
-	const userId = req.params.userId
+	const ownerId = req.params.userId
 
 	try {
-		const result = await getAllTrips(userId)
+		const result = await getAllTrips(ownerId)
 		return res.status(200).json(result)
 	} catch (error) {
 		return res.status(400).json({ error: error.message })
@@ -30,11 +30,11 @@ async function getAllTripsController(req, res) {
 }
 
 async function getTripController(req, res) {
-	const userId = req.params.userId
+	const ownerId = req.params.userId
 	const tripId = req.params.tripId
 
 	try {
-		const result = await getTrip(userId, tripId)
+		const result = await getTrip(ownerId, tripId)
 		return res.status(200).json(result)
 	} catch (error) {
 		return res.status(404).json({ error: error.message })
@@ -42,16 +42,19 @@ async function getTripController(req, res) {
 }
 
 async function updateTripController(req, res) {
-	const userId = req.params.userId
+	const ownerId = req.params.userId
 	const tripId = req.params.tripId
-	const { name, plannedDate, plannedDuration } = req.body
+	const { name, plannedDate, plannedDuration, memberIds, budget, days, accommodations } = req.body
 
 	try {
-		const result = await updateTrip(userId, tripId, {
-			name,
-			plannedDate,
-			plannedDuration,
-		})
+		const result = await updateTrip(ownerId, tripId, days,
+			accommodations, {
+				name,
+				plannedDate,
+				plannedDuration,
+				memberIds,
+				budget,
+			})
 		return res.status(200).json(result)
 	} catch (error) {
 		return res.status(400).json({ error: error.message })
@@ -59,11 +62,11 @@ async function updateTripController(req, res) {
 }
 
 async function deleteTripController(req, res) {
-	const userId = req.params.userId
+	const ownerId = req.params.userId
 	const tripId = req.params.tripId
 
 	try {
-		const result = await deleteTrip(userId, tripId)
+		const result = await deleteTrip(ownerId, tripId)
 		return res.status(200).json(result)
 	} catch (error) {
 		return res.status(404).json({ error: error.message })
