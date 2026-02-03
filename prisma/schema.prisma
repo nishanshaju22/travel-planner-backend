@@ -4,6 +4,9 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// =======================
+// Prisma Client & DB
+// =======================
 generator client {
     provider = "prisma-client-js"
 }
@@ -13,98 +16,187 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model User {
-    id              String           @id @default(uuid())
-    name            String
-    email           String           @unique
-    password        String
-    createdAt       DateTime         @default(now())
-    updatedAt       DateTime         @updatedAt
-
-    preferences     UserPreference[] 
-    trips           Trip[]
-
-    @@index([email])
-}
-
+// =======================
+// Enums
+// =======================
 enum LocationType {
-    CITY
-    TOWN
-    COUNTRY
-    STATE
-    VILLAGE
-    ATTRACTION
-}
-
-model Location {
-    id        String       @id @default(uuid())
-    name      String
-    type      LocationType
-    latitude  Float
-    longitude Float
-
-    tripStops TripStop[]
-}
-
-model Trip {
-    id          String     @id @default(uuid())
-    userId      String
-    name        String
-    createdAt   DateTime   @default(now())
-    updatedAt   DateTime   @updatedAt
-    plannedDate DateTime
-    plannedDuration Int
-
-    user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    stops       TripStop[]
-}
-
-model TripStop {
-    id         String    @id @default(uuid())
-    tripId     String
-    locationId String
-    
-    days       Int[]
-    location   Location  @relation(fields: [locationId], references: [id], onDelete: Restrict)
-
-    trip       Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-
-    @@unique([tripId, locationId])
-    @@index([tripId])
-    @@index([locationId])
+	CITY
+	TOWN
+	COUNTRY
+	STATE
+	VILLAGE
+	ATTRACTION
 }
 
 enum AccomType {
-    HOTEL
-    BACKPACKING
-    NONE
-    RESORT
-    VILLA
-    CAMPING
-    AIRBNB
+	HOTEL
+	BACKPACKING
+	NONE
+	RESORT
+	VILLA
+	CAMPING
+	AIRBNB
 }
 
 enum Transportation {
-    CAR
-    PUBLIC
-    PLANE
-    TRAIN
-    NONE
+	CAR
+	PUBLIC
+	PLANE
+	TRAIN
+	NONE
 }
 
+enum ActivityType {
+	SIGHTSEEING
+	FOOD
+	TRAVEL
+	REST
+	ADVENTURE
+	SHOPPING
+	CUSTOM
+}
+
+enum BudgetType {
+	ACCOMMODATION
+	TRANSPORT
+	FOOD
+	ACTIVITIES
+	MISC
+}
+
+enum TripRole {
+	OWNER
+	EDITOR
+	VIEWER
+}
+
+// =======================
+// User & Preferences
+// =======================
+model User {
+	id          String   @id @default(uuid())
+	name        String
+	email       String   @unique
+	password    String
+	createdAt   DateTime @default(now())
+	updatedAt   DateTime @updatedAt
+
+	bucketList  String[]
+	preference  UserPreference?
+
+	// Trips
+	ownedTrips  Trip[]   @relation("TripOwner")
+	trips       Trip[]   @relation("TripMembers")
+	
+	// Friends
+	friends     User[]   @relation("UserFriends")
+  	friendOf    User[]   @relation("UserFriends")
+
+	@@index([email])
+}
+
+
 model UserPreference {
-    id                        String           @id @default(uuid())
-    userId                    String
-    profilePic                String?
-    budgetMax                 Int?
-    currency                  String?
-    accommodationPreference   AccomType[]
-    transportationPreference  Transportation[]
-    dietaryRestriction        String[]
-    accessibilityNeeds        String[]
+	id                        String           @id @default(uuid())
+	userId                    String           @unique
+	profilePic                String?
+	budgetMax                 Int?
+	currency                  String           @default("USD")
+	accommodationPreference   AccomType[]
+	transportationPreference  Transportation[]
+	dietaryRestriction        String[]
+	accessibilityNeeds        String[]
 
-    user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+	user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+	@@index([userId])
+}
 
-    @@index([userId])
+// =======================
+// Location
+// =======================
+model Location {
+	id        String       @id @default(uuid())
+	name      String
+	type      LocationType
+	latitude  Float
+	longitude Float
+
+	itineraryItems ItineraryItem[]
+  	accommodations Accommodation[]
+}
+
+// =======================
+// Trip
+// =======================
+model Trip {
+	id               String     @id @default(uuid())
+	ownerId          String
+	name             String
+	plannedDate      DateTime
+	plannedDuration  Int
+	createdAt        DateTime   @default(now())
+	updatedAt        DateTime   @updatedAt
+
+	owner            User       @relation("TripOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+	members          User[]     @relation("TripMembers")
+
+	days             TripDay[]
+	budget           Float?
+	accommodations   Accommodation[]
+
+	@@index([ownerId])
+}
+
+
+// =======================
+// Daily Itinerary
+// =======================
+model TripDay {
+	id        String    @id @default(uuid())
+	tripId    String
+	date      DateTime
+	dayNumber Int
+
+	trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+	items     ItineraryItem[]
+
+	@@unique([tripId, dayNumber])
+	@@index([tripId])
+}
+
+model ItineraryItem {
+	id           String        @id @default(uuid())
+	dayId        String
+	locationId   String?
+	name		 String
+	description  String?
+	startTime    DateTime?
+	endTime      DateTime?
+	type         ActivityType
+	costEstimate Int?
+
+	day          TripDay       @relation(fields: [dayId], references: [id], onDelete: Cascade)
+	location     Location?     @relation(fields: [locationId], references: [id])
+
+	@@index([dayId])
+	@@index([locationId])
+}
+
+// =======================
+// Accommodation
+// =======================
+model Accommodation {
+	id          String    @id @default(uuid())
+	tripId      String
+	name        String
+	type        AccomType
+	locationId  String
+	checkIn     DateTime
+	checkOut    DateTime
+	cost        Int?
+
+	trip        Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+	location    Location  @relation(fields: [locationId], references: [id])
+
+	@@index([tripId])
 }
