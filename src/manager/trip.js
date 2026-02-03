@@ -69,8 +69,8 @@ export async function getTrip(ownerId, tripId) {
 	}
 }
 
-export async function updateTrip(ownerId, tripId, days = [], accommodations = [], 
-								{ name, plannedDate, plannedDuration, memberIds, budget }) {
+export async function updateTrip(ownerId, tripId, days = [], accommodations = [],
+	{ name, plannedDate, plannedDuration, memberIds, budget }) {
 	// Ensure the trip exists and belongs to the owner
 	const trip = await getUserTripOrThrow(prisma, ownerId, tripId)
 
