@@ -1,21 +1,15 @@
 import express from 'express'
-import { registerController, loginController, logoutController, removeUserController, updateUserDetailsController } from '../controllers/authController.js'
+import { bucketListController, showBucketListController, deleteBucketListController } from '../controllers/userController.js'
 import { authMiddleware } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 
-router.post('/register', registerController)
+router.use(authMiddleware)
 
-router.post('/login', loginController)
+router.post('/addBucketList', bucketListController)
 
-router.post('/logout', logoutController)
+router.get('/showBucketList/:userId', showBucketListController)
 
-router.delete('/delete', authMiddleware, removeUserController)
-
-router.put('/update', authMiddleware, updateUserDetailsController)
+router.delete('/:userId/showBucketList/:place', deleteBucketListController)
 
 export default router
-
-
-
-//THIS NEEDS TO BE UPDATED I HAVE DONE THIS SO THE CODE STILL RUNS WITHOUT ERRORS.
