@@ -22,38 +22,32 @@ export function getDayRange(date) {
 	return { start, end }
 }
 
-export async function getUserTripOrThrow(prisma, userId, tripId) {
+export async function getUserTripOrThrow(prisma, ownerId, tripId) {
 	const trip = await prisma.trip.findFirst({
 		where: {
 			id: tripId,
-			userId,
+			ownerId,
 		},
+		include: { members: true },
 	})
 
-	if (!trip) {
-		throw new Error('Trip not found.')
-	}
+	if (!trip) throw new Error('Trip not found.')
 
 	return trip
 }
 
-export async function assertNoTripOnDate(prisma, userId, date, excludeTripId = null) {
+
+export async function assertNoTripOnDate(prisma, ownerId, date, excludeTripId = null) {
 	const { start, end } = getDayRange(date)
 
 	const trip = await prisma.trip.findFirst({
 		where: {
-			userId,
-			plannedDate: {
-				gte: start,
-				lte: end,
-			},
-			...(excludeTripId && {
-				NOT: { id: excludeTripId },
-			}),
+			ownerId, // updated field
+			plannedDate: { gte: start, lte: end },
+			...(excludeTripId && { NOT: { id: excludeTripId } }),
 		},
 	})
 
-	if (trip) {
-		throw new Error('You already have a trip planned for this date.')
-	}
+	if (trip) throw new Error('You already have a trip planned for this date.')
 }
+
