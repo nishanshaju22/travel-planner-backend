@@ -1,202 +1,265 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 // =======================
 // Prisma Client & DB
 // =======================
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // =======================
 // Enums
 // =======================
 enum LocationType {
-	CITY
-	TOWN
-	COUNTRY
-	STATE
-	VILLAGE
-	ATTRACTION
+  CITY
+  TOWN
+  COUNTRY
+  STATE
+  VILLAGE
+  ATTRACTION
 }
 
 enum AccomType {
-	HOTEL
-	BACKPACKING
-	NONE
-	RESORT
-	VILLA
-	CAMPING
-	AIRBNB
+  HOTEL
+  BACKPACKING
+  NONE
+  RESORT
+  VILLA
+  CAMPING
+  AIRBNB
 }
 
 enum Transportation {
-	CAR
-	PUBLIC
-	PLANE
-	TRAIN
-	NONE
+  CAR
+  PUBLIC
+  PLANE
+  TRAIN
+  NONE
 }
 
 enum ActivityType {
-	SIGHTSEEING
-	FOOD
-	TRAVEL
-	REST
-	ADVENTURE
-	SHOPPING
-	CUSTOM
+  SIGHTSEEING
+  FOOD
+  TRAVEL
+  REST
+  ADVENTURE
+  SHOPPING
+  CUSTOM
 }
 
 enum BudgetType {
-	ACCOMMODATION
-	TRANSPORT
-	FOOD
-	ACTIVITIES
-	MISC
+  ACCOMMODATION
+  TRANSPORT
+  FOOD
+  ACTIVITIES
+  MISC
 }
 
 enum TripRole {
-	OWNER
-	EDITOR
-	VIEWER
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum TripPreference {
+  NATURE
+  FOOD
+  MUSEUM
+  HISTORY
+  SHOPPING
+  POPULAR
+  LESS_CROWDED
+  HIDDEN
+  ACTIVITY
+  ADRENALINE
+  RELAXING
+  CULTURE
+  BUDGET
+  MID_RANGE
+  LUXURY
+  SIGHTSEEING
+  ENTERTAINMENT
+  PARTY
+  BEACH
+  MOUNTAIN
+  CITY
+  COUNTRYSIDE
 }
 
 // =======================
 // User & Preferences
 // =======================
 model User {
-	id          String   @id @default(uuid())
-	name        String
-	email       String   @unique
-	password    String
-	createdAt   DateTime @default(now())
-	updatedAt   DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-	bucketList  String[]
-	preference  UserPreference?
+  bucketList  String[]
+  preference  UserPreference?
 
-	// Trips
-	ownedTrips  Trip[]   @relation("TripOwner")
-	trips       Trip[]   @relation("TripMembers")
-	
-	// Friends
-	friends     User[]   @relation("UserFriends")
-  	friendOf    User[]   @relation("UserFriends")
+  // Trips
+  ownedTrips  Trip[]        @relation("TripOwner")
+  tripMembers TripMember[]
 
-	@@index([email])
+  // Friends
+  friendships       Friendship[] @relation("UserFriendships")
+  friendsOf         Friendship[] @relation("friendsOf")
+
+  @@index([email])
 }
 
-
 model UserPreference {
-	id                        String           @id @default(uuid())
-	userId                    String           @unique
-	profilePic                String?
-	budgetMax                 Int?
-	currency                  String           @default("USD")
-	accommodationPreference   AccomType[]
-	transportationPreference  Transportation[]
-	dietaryRestriction        String[]
-	accessibilityNeeds        String[]
+  id                        String           @id @default(uuid())
+  userId                    String           @unique
+  profilePic                String?
+  budgetMax                 Decimal?         @db.Decimal(10, 2)
+  currency                  String           @default("USD")
+  accommodationPreference   AccomType[]
+  transportationPreference  Transportation[]
+  dietaryRestriction        String[]
+  accessibilityNeeds        String[]
 
-	user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-	@@index([userId])
+  user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// =======================
+// Friendship
+// =======================
+model Friendship {
+  userId     String
+  friendId   String
+  status     FriendshipStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+
+  user       User @relation("UserFriendships", fields: [userId], references: [id], onDelete: Cascade)
+  friend     User @relation("friendsOf", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@id([userId, friendId])
+  @@index([friendId])
 }
 
 // =======================
 // Location
 // =======================
 model Location {
-	id        String       @id @default(uuid())
-	name      String
-	type      LocationType
-	latitude  Float
-	longitude Float
+  id        String       @id @default(uuid())
+  name      String
+  type      LocationType
+  latitude  Float
+  longitude Float
 
-	itineraryItems ItineraryItem[]
-  	accommodations Accommodation[]
+  itineraryItems ItineraryItem[]
+  accommodations Accommodation[]
+
+  @@index([latitude, longitude])
 }
 
 // =======================
 // Trip
 // =======================
 model Trip {
-	id               String     @id @default(uuid())
-	ownerId          String
-	name             String
-	plannedDate      DateTime
-	plannedDuration  Int
-	createdAt        DateTime   @default(now())
-	updatedAt        DateTime   @updatedAt
+  id               String          @id @default(uuid())
+  ownerId          String
+  name             String
+  plannedDate      DateTime
+  plannedDuration  Int
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
-	owner            User       @relation("TripOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-	members          User[]     @relation("TripMembers")
+  owner            User            @relation("TripOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members          TripMember[]
 
-	days             TripDay[]
-	budget           Float?
-	accommodations   Accommodation[]
+  preference       TripPreference[]
+  days             TripDay[]
+  budget           Decimal?        @db.Decimal(10, 2)
+  accommodations   Accommodation[]
 
-	@@index([ownerId])
+  @@index([ownerId])
+  @@index([plannedDate])
 }
 
+// =======================
+// Trip Members
+// =======================
+model TripMember {
+  tripId   String
+  userId   String
+  role     TripRole @default(VIEWER)
+  joinedAt DateTime @default(now())
+
+  trip     Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([tripId, userId])
+  @@index([userId])
+}
 
 // =======================
 // Daily Itinerary
 // =======================
 model TripDay {
-	id        String    @id @default(uuid())
-	tripId    String
-	date      DateTime
-	dayNumber Int
+  id        String    @id @default(uuid())
+  tripId    String
+  date      DateTime
+  dayNumber Int
 
-	trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-	items     ItineraryItem[]
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  items     ItineraryItem[]
 
-	@@unique([tripId, dayNumber])
-	@@index([tripId])
+  @@unique([tripId, dayNumber])
+  @@index([tripId])
 }
 
+// =======================
+// Itinerary Item
+// =======================
 model ItineraryItem {
-	id           String        @id @default(uuid())
-	dayId        String
-	locationId   String?
-	name		 String
-	description  String?
-	startTime    DateTime?
-	endTime      DateTime?
-	type         ActivityType
-	costEstimate Int?
+  id           String        @id @default(uuid())
+  dayId        String
+  locationId   String?
+  name         String
+  description  String?
+  startTime    DateTime?
+  endTime      DateTime?
+  type         ActivityType
+  costEstimate Decimal?     @db.Decimal(10, 2)
 
-	day          TripDay       @relation(fields: [dayId], references: [id], onDelete: Cascade)
-	location     Location?     @relation(fields: [locationId], references: [id])
+  day          TripDay      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  location     Location?    @relation(fields: [locationId], references: [id])
 
-	@@index([dayId])
-	@@index([locationId])
+  @@index([dayId, startTime])
+  @@index([locationId])
 }
 
 // =======================
 // Accommodation
 // =======================
 model Accommodation {
-	id          String    @id @default(uuid())
-	tripId      String
-	name        String
-	type        AccomType
-	locationId  String
-	checkIn     DateTime
-	checkOut    DateTime
-	cost        Int?
+  id          String    @id @default(uuid())
+  tripId      String
+  name        String
+  type        AccomType
+  locationId  String
+  checkIn     DateTime
+  checkOut    DateTime
+  cost        Decimal?  @db.Decimal(10, 2)
 
-	trip        Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-	location    Location  @relation(fields: [locationId], references: [id])
+  trip        Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  location    Location  @relation(fields: [locationId], references: [id])
 
-	@@index([tripId])
+  @@index([tripId])
 }
