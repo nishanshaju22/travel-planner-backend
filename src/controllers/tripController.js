@@ -2,8 +2,8 @@ import {
 	createTrip,
 	getAllTrips,
 	getTrip,
-	updateTrip,
 	deleteTrip,
+	updateTripBasics,
 } from '../manager/trip.js'
 
 async function createTripController(req, res) {
@@ -41,20 +41,18 @@ async function getTripController(req, res) {
 	}
 }
 
-async function updateTripController(req, res) {
-	const ownerId = req.params.userId
+async function updateTripBasicsController(req, res) {
+	const userId = req.params.userId
 	const tripId = req.params.tripId
-	const { name, plannedDate, plannedDuration, memberIds, budget, days, accommodations } = req.body
+	const { name, plannedDate, plannedDuration, budget } = req.body
 
 	try {
-		const result = await updateTrip(ownerId, tripId, days,
-			accommodations, {
-				name,
-				plannedDate,
-				plannedDuration,
-				memberIds,
-				budget,
-			})
+		const result = await updateTripBasics(tripId, userId, {
+			name,
+			plannedDate,
+			plannedDuration,
+			budget,
+		})
 		return res.status(200).json(result)
 	} catch (error) {
 		return res.status(400).json({ error: error.message })
@@ -77,6 +75,6 @@ export {
 	createTripController,
 	getAllTripsController,
 	getTripController,
-	updateTripController,
 	deleteTripController,
+	updateTripBasicsController,
 }

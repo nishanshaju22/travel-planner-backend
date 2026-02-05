@@ -1,3 +1,5 @@
+import { prisma } from '../config/db.js'
+
 export function validateFutureDate(dateInput) {
 	const date = new Date(dateInput)
 
@@ -22,7 +24,7 @@ export function getDayRange(date) {
 	return { start, end }
 }
 
-export async function getUserTripOrThrow(prisma, ownerId, tripId) {
+export async function getUserTripOrThrow(ownerId, tripId) {
 	const trip = await prisma.trip.findFirst({
 		where: {
 			id: tripId,
@@ -37,7 +39,7 @@ export async function getUserTripOrThrow(prisma, ownerId, tripId) {
 }
 
 
-export async function assertNoTripOnDate(prisma, ownerId, date, excludeTripId = null) {
+export async function assertNoTripOnDate(ownerId, date, excludeTripId = null) {
 	const { start, end } = getDayRange(date)
 
 	const trip = await prisma.trip.findFirst({
@@ -51,3 +53,35 @@ export async function assertNoTripOnDate(prisma, ownerId, date, excludeTripId = 
 	if (trip) throw new Error('You already have a trip planned for this date.')
 }
 
+export async function assertUserIsTripOwner(userId, tripId) {
+	const trip = await prisma.trip.findUnique({
+		where: { id: tripId },
+		select: { ownerId: true },
+	})
+
+	if (!trip) {
+		throw new Error('Trip not found')
+	}
+
+	if (trip.ownerId !== userId) {
+		throw new Error('User is not the owner of this trip')
+	}
+}
+
+export async function validateFriends(ownerId, memberIds = []) {
+	if (!memberIds.length) return
+
+	const friendships = await prisma.friendship.findMany({
+		where: {
+			userId: ownerId,
+			status: 'ACCEPTED',
+		},
+	})
+
+	const friendIds = friendships.map(f => f.friendId)
+	const invalidMembers = memberIds.filter(id => !friendIds.includes(id))
+
+	if (invalidMembers.length > 0) {
+		throw new Error('All members must be friends of the trip owner.')
+	}
+}
