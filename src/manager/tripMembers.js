@@ -26,11 +26,11 @@ export async function addTripMembers(tripId, ownerId, memberIds = []) {
 		)
 	}
 
-    const newIds = memberIds.filter(id => !existingIds.includes(id))
+	const newIds = memberIds.filter(id => !existingIds.includes(id))
 
-    if (newIds.length === 0) {
-        throw new Error('No new members to add')
-    }
+	if (newIds.length === 0) {
+		throw new Error('No new members to add')
+	}
 
 	await prisma.tripMember.createMany({
 		data: newIds.map(id => ({ tripId, userId: id, role: 'VIEWER' })),
@@ -60,32 +60,32 @@ export async function removeTripMember(ownerId, tripId, userId) {
 }
 
 export async function updateTripMemberRole(tripId, ownerId, memberId, role) {
-    const validRoles = ['VIEWER', 'EDITOR']
-    if (!validRoles.includes(role)) {
-        throw new Error(`Invalid role. Must be one of: ${validRoles.join(', ')}`)
-    }
+	const validRoles = ['VIEWER', 'EDITOR']
+	if (!validRoles.includes(role)) {
+		throw new Error(`Invalid role. Must be one of: ${validRoles.join(', ')}`)
+	}
 
-    await assertUserIsTripOwner(ownerId, tripId)
+	await assertUserIsTripOwner(ownerId, tripId)
 
-    // Fetch the member
-    const member = await prisma.tripMember.findUnique({
-        where: { tripId_userId: { tripId, userId: memberId } },
-    })
+	// Fetch the member
+	const member = await prisma.tripMember.findUnique({
+		where: { tripId_userId: { tripId, userId: memberId } },
+	})
 
-    if (!member) {
-        throw new Error('Member not found')
-    }
+	if (!member) {
+		throw new Error('Member not found')
+	}
 
-    // Owner role cannot be changed
-    if (member.role === 'OWNER') {
-        throw new Error('Cannot change the owner role')
-    }
+	// Owner role cannot be changed
+	if (member.role === 'OWNER') {
+		throw new Error('Cannot change the owner role')
+	}
 
-    // Update the role
-    const updatedMember = await prisma.tripMember.update({
-        where: { tripId_userId: { tripId, userId: memberId } },
-        data: { role },
-    })
+	// Update the role
+	const updatedMember = await prisma.tripMember.update({
+		where: { tripId_userId: { tripId, userId: memberId } },
+		data: { role },
+	})
 
-    return updatedMember
+	return updatedMember
 }

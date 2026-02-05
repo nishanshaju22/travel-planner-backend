@@ -6,10 +6,10 @@ import {
 	deleteTripController,
 	updateTripBasicsController,
 } from '../controllers/tripController.js'
-import { 
-	addTripMembersController, 
+import {
+	addTripMembersController,
 	removeTripMemberController,
-	updateTripMemberRoleController
+	updateTripMemberRoleController,
 } from '../controllers/tripMemberController.js'
 import { authMiddleware } from '../middleware/authMiddleware.js'
 

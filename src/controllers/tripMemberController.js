@@ -1,7 +1,7 @@
 import {
 	addTripMembers,
 	removeTripMember,
-    updateTripMemberRole
+	updateTripMemberRole,
 } from '../manager/tripMembers.js'
 
 
@@ -36,25 +36,25 @@ async function removeTripMemberController(req, res) {
 }
 
 async function updateTripMemberRoleController(req, res) {
-    const tripId = req.params.tripId
-    const ownerId = req.params.userId
-    const memberId = req.params.memberId
-    const { role } = req.body
+	const tripId = req.params.tripId
+	const ownerId = req.params.userId
+	const memberId = req.params.memberId
+	const { role } = req.body
 
-    if (!role) {
-        return res.status(400).json({ error: 'Role is required' })
-    }
+	if (!role) {
+		return res.status(400).json({ error: 'Role is required' })
+	}
 
-    try {
-        const updatedMember = await updateTripMemberRole(tripId, ownerId, memberId, role)
-        return res.status(200).json({ status: 'success', data: { member: updatedMember } })
-    } catch (error) {
-        return res.status(400).json({ error: error.message })
-    }
+	try {
+		const updatedMember = await updateTripMemberRole(tripId, ownerId, memberId, role)
+		return res.status(200).json({ status: 'success', data: { member: updatedMember } })
+	} catch (error) {
+		return res.status(400).json({ error: error.message })
+	}
 }
 
 export {
 	addTripMembersController,
-    removeTripMemberController,
-    updateTripMemberRoleController
+	removeTripMemberController,
+	updateTripMemberRoleController,
 }
