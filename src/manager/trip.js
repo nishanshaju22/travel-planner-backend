@@ -1,26 +1,30 @@
 import { prisma } from '../config/db.js'
-import { validateFutureDate, getUserTripOrThrow, assertNoTripOnDate } from '../utils/tripValidators.js'
+import {
+	validateFutureDate,
+	getUserTripOrThrow,
+	assertNoTripOnDate,
+	validateFriends,
+	assertUserIsTripOwner,
+} from '../utils/tripValidators.js'
 
-export async function createTrip(ownerId, name, plannedDate, plannedDuration, memberIds = []) {
+// ----------------------
+// Create Trip
+// ----------------------
+export async function createTrip(
+	ownerId,
+	name,
+	plannedDate,
+	plannedDuration,
+	memberIds = [],
+) {
 	const date = validateFutureDate(plannedDate)
 
 	if (plannedDuration <= 0) {
 		throw new Error('The duration must be greater than 0.')
 	}
 
-	await assertNoTripOnDate(prisma, ownerId, date)
-
-	// Validate members are friends
-	const owner = await prisma.user.findUnique({
-		where: { id: ownerId },
-		include: { friends: true },
-	})
-
-	const friendIds = owner.friends.map(f => f.id)
-	const invalidMembers = memberIds.filter(id => !friendIds.includes(id))
-	if (invalidMembers.length > 0) {
-		throw new Error('All members must be friends of the trip owner.')
-	}
+	await assertNoTripOnDate(ownerId, date)
+	await validateFriends(ownerId, memberIds)
 
 	const trip = await prisma.trip.create({
 		data: {
@@ -29,95 +33,116 @@ export async function createTrip(ownerId, name, plannedDate, plannedDuration, me
 			plannedDate: date,
 			plannedDuration: Number(plannedDuration),
 			members: {
-				connect: memberIds.map(id => ({ id })),
+				create: [
+					{ userId: ownerId, role: 'OWNER' },
+					...memberIds.map(id => ({
+						userId: id,
+						role: 'VIEWER',
+					})),
+				],
 			},
 		},
 		include: {
-			members: true,
+			members: { include: { user: true } },
 		},
 	})
 
-	return {
-		status: 'success',
-		data: { trip },
-	}
+	return { status: 'success', data: { trip } }
 }
 
+// ----------------------
+// Get All Trips
+// ----------------------
 export async function getAllTrips(ownerId) {
 	const trips = await prisma.trip.findMany({
-		where: { ownerId },
+		where: {
+			OR: [
+				{ ownerId },
+				{ members: { some: { userId: ownerId } } },
+			],
+		},
 		orderBy: { plannedDate: 'asc' },
-		include: { members: true },
+		include: {
+			members: { include: { user: true } },
+		},
 	})
 
-	return {
-		status: 'success',
-		data: { trips },
-	}
+	return { status: 'success', data: { trips } }
 }
 
+// ----------------------
+// Get Single Trip
+// ----------------------
 export async function getTrip(ownerId, tripId) {
-	const trip = await getUserTripOrThrow(prisma, ownerId, tripId)
-	const tripDetal = await prisma.trip.findUnique({
-		where: { id: trip.id },
-		include: { members: true, accommodations: true, days: true  },
+	await getUserTripOrThrow(ownerId, tripId)
+
+	const trip = await prisma.trip.findUnique({
+		where: { id: tripId },
+		include: {
+			members: { include: { user: true } },
+			accommodations: { include: { location: true } },
+			days: {
+				include: {
+					items: { include: { location: true } },
+				},
+			},
+		},
 	})
 
-	return {
-		status: 'success',
-		data: { trip: tripDetal },
-	}
+	return { status: 'success', data: { trip } }
 }
 
-export async function updateTrip(ownerId, tripId, days = [], accommodations = [],
-	{ name, plannedDate, plannedDuration, memberIds, budget }) {
-	// Ensure the trip exists and belongs to the owner
-	const trip = await getUserTripOrThrow(prisma, ownerId, tripId)
-
+// ----------------------
+// Update Trip
+// ----------------------
+export async function updateTripBasics(tripId, userId, { name, plannedDate, plannedDuration, budget }) {
 	const data = {}
 
-	// Update basic fields
-	if (name !== undefined) {
-		data.name = name
-	}
+	await assertUserIsTripOwner(userId, tripId)
 
-	if (plannedDate !== undefined) {
-		const date = validateFutureDate(plannedDate)
-		await assertNoTripOnDate(prisma, ownerId, date, tripId)
-		data.plannedDate = date
-	}
-
+	if (name !== undefined) data.name = name
+	if (plannedDate !== undefined) data.plannedDate = new Date(plannedDate)
 	if (plannedDuration !== undefined) {
-		if (plannedDuration <= 0) throw new Error('The duration must be greater than 0.')
+		if (plannedDuration <= 0) throw new Error('Duration must be > 0')
 		data.plannedDuration = Number(plannedDuration)
 	}
+	if (budget !== undefined) data.budget = Number(budget)
 
-	if (budget !== undefined) {
-		data.budget = Number(budget)
-	}
+	const updatedTrip = await prisma.trip.update({
+		where: { id: tripId },
+		data,
+	})
 
-	// Update members if provided
-	if (memberIds !== undefined) {
-		const owner = await prisma.user.findUnique({
-			where: { id: ownerId },
-			include: { friends: true },
-		})
+	return updatedTrip
+}
 
-		const friendIds = owner.friends.map(f => f.id)
-		const invalidMembers = memberIds.filter(id => !friendIds.includes(id))
-		if (invalidMembers.length > 0) {
-			throw new Error('All members must be friends of the trip owner.')
-		}
 
-		data.members = { set: memberIds.map(id => ({ id })) }
-	}
+// -----------------------
+// Update Trip Preferences
+// -----------------------
+export async function addTripPreferences(tripId, preferences = []) {
 
-	// Update Trip Days if provided
-	if (days.length > 0) {
-		// Example: fully replace days (remove old & create new)
-		data.days = {
-			deleteMany: {}, // removes all existing TripDay for this trip
-			create: days.map(d => ({
+	const trip = await prisma.trip.findUnique({ where: { id: tripId } })
+
+	const existingPrefs = trip.preference || []
+	const updatedPrefs = Array.from(new Set([...existingPrefs, ...preferences]))
+
+	const updatedTrip = await prisma.trip.update({
+		where: { id: tripId },
+		data: { preference: updatedPrefs },
+	})
+
+	return updatedTrip
+}
+
+export async function addTripDays(tripId, days = []) {
+	if (!days.length) return
+
+	const createdDays = []
+  	for (const d of days) {
+		const day = await prisma.tripDay.create({
+			data: {
+				tripId,
 				dayNumber: d.dayNumber,
 				date: new Date(d.date),
 				items: {
@@ -131,41 +156,68 @@ export async function updateTrip(ownerId, tripId, days = [], accommodations = []
 						location: item.locationId ? { connect: { id: item.locationId } } : undefined,
 					})),
 				},
-			})),
-		}
+			},
+			include: { items: true },
+		})
+		createdDays.push(day)
+  	}
+
+	return createdDays
+}
+
+export async function addTripItemsToDay(dayId, items = []) {
+	if (!items.length) return []
+
+	const createdItems = []
+	for (const item of items) {
+		const newItem = await prisma.itineraryItem.create({
+			data: {
+				dayId,
+				name: item.name,
+				description: item.description || null,
+				type: item.type,
+				startTime: item.startTime ? new Date(item.startTime) : null,
+				endTime: item.endTime ? new Date(item.endTime) : null,
+				costEstimate: item.costEstimate || null,
+				location: item.locationId ? { connect: { id: item.locationId } } : undefined,
+			},
+			include: { location: true },
+		})
+		createdItems.push(newItem)
 	}
 
-	// Update Accommodations if provided
-	if (accommodations.length > 0) {
-		data.accommodations = {
-			deleteMany: {}, // removes existing accommodations
-			create: accommodations.map(a => ({
+	return createdItems
+}
+
+export async function addTripAccommodations(tripId, accommodations = []) {
+	if (!accommodations.length) return
+
+	const created = []
+	for (const a of accommodations) {
+		const accom = await prisma.accommodation.create({
+			data: {
+				tripId,
 				name: a.name,
 				type: a.type,
 				checkIn: new Date(a.checkIn),
 				checkOut: new Date(a.checkOut),
 				cost: a.cost ? Number(a.cost) : null,
 				location: { connect: { id: a.locationId } },
-			})),
-		}
+			},
+			include: { location: true },
+		})
+		created.push(accom)
 	}
 
-	// Perform update
-	const updatedTrip = await prisma.trip.update({
-		where: { id: tripId },
-		data,
-		include: {
-			members: true,
-			days: { include: { items: { include: { location: true } } } },
-			accommodations: { include: { location: true } },
-		},
-	})
-
-	return { status: 'success', data: { trip: updatedTrip } }
+	return created
 }
 
+
+// ----------------------
+// Delete Trip
+// ----------------------
 export async function deleteTrip(ownerId, tripId) {
-	await getUserTripOrThrow(prisma, ownerId, tripId)
+	await getUserTripOrThrow(ownerId, tripId)
 
 	await prisma.trip.delete({
 		where: { id: tripId },
