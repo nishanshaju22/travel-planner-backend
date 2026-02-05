@@ -78,9 +78,136 @@ async function deleteBucketList(userId, place) {
 	}
 }
 
-async function addFriends(userId, friendUserId) {
+async function sendFriendsRequest(userId, friendId) {
+	if (!userId || !friendId) {
+		throw new Error('Invalid User Ids')
+	}
 
+	if (userId === friendId) {
+		throw new Error('You cannot add yourself as a friend')
+	}
+
+	const [user, friend] = await Promise.all([
+		prisma.user.findUnique({ where: { id: userId } }),
+		prisma.user.findUnique({ where: { id: friendId } }),
+	])
+
+	if (!user || !friend) {
+		throw new Error('User does not exist')
+	}
+
+	const existing = await prisma.friendship.findUnique({
+		where: {
+			userId_friendId: {
+				userId,
+				friendId,
+			},
+		},
+	})
+
+	if (existing && existing.status === 'BLOCKED') {
+		throw new Error('This user does not exsist')
+	} else if (existing && existing.status === 'PENDING') {
+		throw new Error('A request has already been send to this user')
+	} else if (existing && existing.status === 'ACCEPTED') {
+		throw new Error('This user is already your friend')
+	}
+
+	await prisma.friendship.create({
+		data: {
+			userId: friendId,
+			friendId: userId,
+			status: 'PENDING',
+		},
+	})
+
+	const friendship = await prisma.friendship.create({
+		data: {
+			userId,
+			friendId,
+			status: 'PENDING',
+		},
+	})
+
+	return {
+		message: 'Success',
+		data: friendship,
+	}
 }
 
+async function acceptRequest(userId, friendId) {
 
-export { addToBucketList, showBucketList, deleteBucketList }
+	if (!userId || !friendId) {
+		throw new Error('Invalid User IDs')
+	}
+
+	const existing = await prisma.friendship.findUnique({
+		where: {
+			userId_friendId: {
+				userId,
+				friendId,
+			},
+		},
+	})
+
+	if (existing && existing.status === 'BLOCKED') {
+		throw new Error('This user does not exsist')
+	} else if (existing && existing.status === 'ACCEPTED') {
+		throw new Error('This user is already your friend')
+	} else if (!existing) {
+		throw new Error('Please send a request to this user first')
+	}
+
+	await prisma.friendship.update({
+		where: {
+			userId_friendId: {
+				userId: friendId,
+				friendId: userId,
+			},
+		},
+		data: {
+			status: 'ACCEPTED',
+		},
+	})
+
+	const friendship = await prisma.friendship.update({
+		where: {
+			userId_friendId: {
+				userId: userId,
+				friendId: friendId,
+			},
+		},
+		data: {
+			status: 'ACCEPTED',
+		},
+	})
+
+	return {
+		message: 'Success',
+		data: friendship,
+	}
+}
+
+async function searchUsersByEmail(query, currentUserId) {
+	if (!query) return []
+
+	return prisma.user.findMany({
+		where: {
+			id: {
+				not: currentUserId,
+			},
+			email: {
+				contains: query,
+				mode: 'insensitive',
+			},
+		},
+		select: {
+			id: true,
+			email: true,
+			name: true,
+		},
+		take: 10,
+	})
+}
+
+export { addToBucketList, showBucketList, deleteBucketList, sendFriendsRequest, acceptRequest, searchUsersByEmail }
