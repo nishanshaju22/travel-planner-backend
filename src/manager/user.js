@@ -78,5 +78,9 @@ async function deleteBucketList(userId, place) {
     }
 }
 
+async function addFriends(userId, friendUserId) {
+
+}
+
 
 export { addToBucketList, showBucketList, deleteBucketList }
