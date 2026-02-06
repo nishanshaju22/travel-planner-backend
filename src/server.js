@@ -6,6 +6,8 @@ import authRoutes from './routes/authRoutes.js'
 import userRoutes from './routes/userRoutes.js'
 import tripRoutes from './routes/tripRoutes.js'
 import cookieParser from 'cookie-parser'
+import { initWebSocket } from './ws.js'
+
 
 config()
 connectDB()
@@ -26,9 +28,11 @@ app.use('/user', userRoutes)
 app.use('/trip', tripRoutes)
 
 const PORT = 5001
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
 	console.log(`Server running on PORT ${PORT}`)
-})
+});
+
+initWebSocket(server)
 
 process.on('unhandledRejection', (err) => {
 	console.error('Unhandled Rejection', err)

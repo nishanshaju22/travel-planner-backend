@@ -95,6 +95,14 @@ enum TripPreference {
   COUNTRYSIDE
 }
 
+enum NotificationType {
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  TRIP_INVITE
+  TRIP_UPDATED
+  SYSTEM
+}
+
 // =======================
 // User & Preferences
 // =======================
@@ -117,7 +125,26 @@ model User {
   friendships       Friendship[] @relation("UserFriendships")
   friendsOf         Friendship[] @relation("friendsOf")
 
+  notifications     Notification[]
+
   @@index([email])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      NotificationType
+  payload   Json
+  read      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
 }
 
 model UserPreference {

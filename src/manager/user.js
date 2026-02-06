@@ -1,4 +1,5 @@
 import { prisma } from '../config/db.js'
+import { notification } from './notification.js'
 
 
 async function addToBucketList(userId, place) {
@@ -90,7 +91,7 @@ async function sendFriendsRequest(userId, friendId) {
 	const [user, friend] = await Promise.all([
 		prisma.user.findUnique({ where: { id: userId } }),
 		prisma.user.findUnique({ where: { id: friendId } }),
-	])
+	]);
 
 	if (!user || !friend) {
 		throw new Error('User does not exist')
@@ -127,7 +128,23 @@ async function sendFriendsRequest(userId, friendId) {
 			friendId,
 			status: 'PENDING',
 		},
-	})
+	});
+
+    const payload = {
+        email: user.email,
+        name: user.name,
+        message: `The user ${user.name} with email: ${user.email} has sent you a friend request`
+    }
+
+    notification(friendId, payload, 'NOTIFICATION');
+
+    await prisma.notification.create({
+        data: {
+            userId: friendId,
+            type: "FRIEND_REQUEST",
+            payload,
+        }
+    });
 
 	return {
 		message: 'Success',
@@ -139,6 +156,15 @@ async function acceptRequest(userId, friendId) {
 
 	if (!userId || !friendId) {
 		throw new Error('Invalid User IDs')
+	}
+
+    const [user, friend] = await Promise.all([
+		prisma.user.findUnique({ where: { id: userId } }),
+		prisma.user.findUnique({ where: { id: friendId } }),
+	]);
+
+    if (!user || !friend) {
+		throw new Error('User does not exist')
 	}
 
 	const existing = await prisma.friendship.findUnique({
@@ -168,19 +194,35 @@ async function acceptRequest(userId, friendId) {
 		data: {
 			status: 'ACCEPTED',
 		},
-	})
+	});
 
 	const friendship = await prisma.friendship.update({
-		where: {
-			userId_friendId: {
-				userId: userId,
+        where: {
+            userId_friendId: {
+                userId: userId,
 				friendId: friendId,
 			},
 		},
 		data: {
-			status: 'ACCEPTED',
+            status: 'ACCEPTED',
 		},
-	})
+	});
+
+    const payload = {
+        email: friend.email,
+        name: friend.name,
+        message: `The user ${friend.name} with email: ${friend.email} has accepted your friend request you are both now friends and can add each other to trip.`
+    }
+
+    notification(userId, payload, 'NOTIFICATION');
+
+    await prisma.notification.create({
+        data: {
+            userId,
+            type: "FRIEND_ACCEPTED",
+            payload,
+        }
+    });
 
 	return {
 		message: 'Success',
