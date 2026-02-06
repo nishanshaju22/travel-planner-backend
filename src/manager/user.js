@@ -1,5 +1,5 @@
 import { prisma } from '../config/db.js'
-import { notification } from './notification.js'
+import { createNotification, deleteNotificationAfterAccept, notification } from './notification.js'
 
 
 async function addToBucketList(userId, place) {
@@ -133,18 +133,12 @@ async function sendFriendsRequest(userId, friendId) {
 	const payload = {
 		email: user.email,
 		name: user.name,
+        id: user.id,
 		message: `The user ${user.name} with email: ${user.email} has sent you a friend request`,
 	}
 
 	notification(friendId, payload, 'NOTIFICATION')
-
-	await prisma.notification.create({
-		data: {
-			userId: friendId,
-			type: 'FRIEND_REQUEST',
-			payload,
-		},
-	})
+	createNotification(friendId, payload, 'FRIEND_REQUEST')
 
 	return {
 		message: 'Success',
@@ -214,15 +208,9 @@ async function acceptRequest(userId, friendId) {
 		message: `The user ${friend.name} with email: ${friend.email} has accepted your friend request you are both now friends and can add each other to trip.`,
 	}
 
-	notification(userId, payload, 'NOTIFICATION')
-
-	await prisma.notification.create({
-		data: {
-			userId,
-			type: 'FRIEND_ACCEPTED',
-			payload,
-		},
-	})
+	notification(userId, payload, 'NOTIFICATION');
+	createNotification(userId, payload, 'FRIEND_ACCEPTED');
+    deleteNotificationAfterAccept(userId, friendId);
 
 	return {
 		message: 'Success',
