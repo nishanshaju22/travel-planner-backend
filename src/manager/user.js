@@ -133,7 +133,7 @@ async function sendFriendsRequest(userId, friendId) {
 	const payload = {
 		email: user.email,
 		name: user.name,
-        id: user.id,
+		id: user.id,
 		message: `The user ${user.name} with email: ${user.email} has sent you a friend request`,
 	}
 
@@ -208,9 +208,9 @@ async function acceptRequest(userId, friendId) {
 		message: `The user ${friend.name} with email: ${friend.email} has accepted your friend request you are both now friends and can add each other to trip.`,
 	}
 
-	notification(userId, payload, 'NOTIFICATION');
-	createNotification(userId, payload, 'FRIEND_ACCEPTED');
-    deleteNotificationAfterAccept(userId, friendId);
+	notification(userId, payload, 'NOTIFICATION')
+	createNotification(userId, payload, 'FRIEND_ACCEPTED')
+	deleteNotificationAfterAccept(userId, friendId)
 
 	return {
 		message: 'Success',

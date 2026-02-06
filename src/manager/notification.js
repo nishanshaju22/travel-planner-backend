@@ -77,20 +77,20 @@ async function createNotification(userId, payload, type) {
 }
 
 async function deleteNotificationAfterAccept(userId, friendId) {
-    if (!userId || !friendId) {
-        throw new Error('Invalid userId or friendId');
-    }
+	if (!userId || !friendId) {
+		throw new Error('Invalid userId or friendId')
+	}
 
-    return prisma.notification.deleteMany({
-        where: {
-            userId,
-            type: 'FRIEND_REQUEST',
-            payload: {
-                path: ['id'],
-                equals: friendId,
-            },
-        },
-    });
+	return prisma.notification.deleteMany({
+		where: {
+			userId,
+			type: 'FRIEND_REQUEST',
+			payload: {
+				path: ['id'],
+				equals: friendId,
+			},
+		},
+	})
 }
 
 export { notification, getNotification, createNotification, deleteNotificationAfterAccept }
