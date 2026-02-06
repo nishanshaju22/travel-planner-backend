@@ -7,7 +7,7 @@ import {
 
 async function addTripMembersController(req, res) {
 	const tripId = req.params.tripId
-	const ownerId = req.params.userId
+	const ownerId = req.user.id
 	const { memberIds } = req.body
 
 	if (!Array.isArray(memberIds) || memberIds.length === 0) {
@@ -23,7 +23,7 @@ async function addTripMembersController(req, res) {
 }
 
 async function removeTripMemberController(req, res) {
-	const ownerId = req.params.userId
+	const ownerId = req.user.id
 	const tripId = req.params.tripId
 	const memberId = req.params.memberId
 
@@ -37,7 +37,7 @@ async function removeTripMemberController(req, res) {
 
 async function updateTripMemberRoleController(req, res) {
 	const tripId = req.params.tripId
-	const ownerId = req.params.userId
+	const ownerId = req.user.id
 	const memberId = req.params.memberId
 	const { role } = req.body
 
