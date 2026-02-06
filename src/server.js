@@ -30,7 +30,7 @@ app.use('/trip', tripRoutes)
 const PORT = 5001
 const server = app.listen(PORT, () => {
 	console.log(`Server running on PORT ${PORT}`)
-});
+})
 
 initWebSocket(server)
 
