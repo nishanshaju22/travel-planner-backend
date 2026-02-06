@@ -5,6 +5,7 @@ import cors from 'cors'
 import authRoutes from './routes/authRoutes.js'
 import userRoutes from './routes/userRoutes.js'
 import tripRoutes from './routes/tripRoutes.js'
+import notificationRoutes from './routes/notificationRoutes.js'
 import cookieParser from 'cookie-parser'
 import { initWebSocket } from './ws.js'
 
@@ -26,6 +27,7 @@ app.use(cookieParser())
 app.use('/auth', authRoutes)
 app.use('/user', userRoutes)
 app.use('/trip', tripRoutes)
+app.use('/notification', notificationRoutes)
 
 const PORT = 5001
 const server = app.listen(PORT, () => {
