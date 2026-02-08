@@ -11,25 +11,42 @@ import {
 	removeTripMemberController,
 	updateTripMemberRoleController,
 } from '../controllers/tripMemberController.js'
+import {
+	addTripDaysController,
+	addTripItemsController,
+	deleteTripItemController,
+	getTripDaysController,
+	updateTripItemController,
+} from '../controllers/tripDaysAndItemsController.js'
 import { authMiddleware } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 router.use(authMiddleware)
 
-router.post('/user/:userId/trips', createTripController)
+router.post('/', createTripController)
 
-router.get('/user/:userId/trips', getAllTripsController)
+router.get('/', getAllTripsController)
 
-router.get('/user/:userId/trips/:tripId', getTripController)
+router.get('/:tripId', getTripController)
 
-router.patch('/user/:userId/trips/:tripId', updateTripBasicsController)
+router.patch('/:tripId', updateTripBasicsController)
 
-router.delete('/user/:userId/trips/:tripId', deleteTripController)
+router.delete('/:tripId', deleteTripController)
 
-router.post('/user/:userId/trips/:tripId/members', addTripMembersController)
+router.post('/:tripId/members', addTripMembersController)
 
-router.patch('/user/:userId/trips/:tripId/members/:memberId', updateTripMemberRoleController)
+router.patch('/:tripId/members/:memberId', updateTripMemberRoleController)
 
-router.delete('/user/:userId/trips/:tripId/members/:memberId', removeTripMemberController)
+router.delete('/:tripId/members/:memberId', removeTripMemberController)
+
+router.post('/:tripId/days', addTripDaysController)
+
+router.post('/:tripId/days/:dayId/items', addTripItemsController)
+
+router.get('/:tripId/days', getTripDaysController)
+
+router.patch('/:tripId/items/:itemId', updateTripItemController)
+
+router.delete('/:tripId/items/:itemId', deleteTripItemController)
 
 export default router

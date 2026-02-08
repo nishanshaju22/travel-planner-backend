@@ -5,6 +5,7 @@ import {
 	assertNoTripOnDate,
 	validateFriends,
 	assertUserIsTripOwner,
+	validateTripPreferences,
 } from '../utils/tripValidators.js'
 
 // ----------------------
@@ -16,6 +17,8 @@ export async function createTrip(
 	plannedDate,
 	plannedDuration,
 	memberIds = [],
+	budget = 0,
+	preferences = [],
 ) {
 	const date = validateFutureDate(plannedDate)
 
@@ -25,6 +28,11 @@ export async function createTrip(
 
 	await assertNoTripOnDate(ownerId, date)
 	await validateFriends(ownerId, memberIds)
+	validateTripPreferences(preferences)
+
+	if (!Array.isArray(preferences)) {
+		throw new Error('Preferences must be an array')
+	}
 
 	const trip = await prisma.trip.create({
 		data: {
@@ -32,10 +40,12 @@ export async function createTrip(
 			ownerId,
 			plannedDate: date,
 			plannedDuration: Number(plannedDuration),
+			budget: Number(budget),
+			preference: preferences.length > 0 ? preferences : [],
 			members: {
 				create: [
 					{ userId: ownerId, role: 'OWNER' },
-					...memberIds.map(id => ({
+					...(memberIds || []).map(id => ({
 						userId: id,
 						role: 'VIEWER',
 					})),
@@ -50,55 +60,52 @@ export async function createTrip(
 	return { status: 'success', data: { trip } }
 }
 
+
 // ----------------------
 // Get All Trips
 // ----------------------
-export async function getAllTrips(ownerId) {
+export async function getAllTrips(userId) {
 	const trips = await prisma.trip.findMany({
 		where: {
 			OR: [
-				{ ownerId },
-				{ members: { some: { userId: ownerId } } },
+				{ ownerId: userId },
+				{ members: { some: { userId } } },
 			],
 		},
 		orderBy: { plannedDate: 'asc' },
 		include: {
-			members: { include: { user: true } },
+			members: {
+				include: {
+					user: {
+						select: {
+							id: true,
+							name: true,
+							email: true,
+							createdAt: true,
+							updatedAt: true,
+						},
+					},
+				},
+			},
 		},
 	})
 
 	return { status: 'success', data: { trips } }
 }
 
+
 // ----------------------
 // Get Single Trip
 // ----------------------
-export async function getTrip(ownerId, tripId) {
-	await getUserTripOrThrow(ownerId, tripId)
-
-	const trip = await prisma.trip.findUnique({
-		where: { id: tripId },
-		include: {
-			members: { include: { user: true } },
-			accommodations: { include: { location: true } },
-			days: {
-				include: {
-					items: { include: { location: true } },
-				},
-			},
-		},
-	})
-
+export async function getTrip(userId, tripId) {
+	const trip = await getUserTripOrThrow(userId, tripId)
 	return { status: 'success', data: { trip } }
 }
-
 // ----------------------
 // Update Trip
 // ----------------------
-export async function updateTripBasics(tripId, userId, { name, plannedDate, plannedDuration, budget }) {
+export async function updateTripBasics(tripId, { name, plannedDate, plannedDuration, budget, preferences }) {
 	const data = {}
-
-	await assertUserIsTripOwner(userId, tripId)
 
 	if (name !== undefined) data.name = name
 	if (plannedDate !== undefined) data.plannedDate = new Date(plannedDate)
@@ -108,85 +115,17 @@ export async function updateTripBasics(tripId, userId, { name, plannedDate, plan
 	}
 	if (budget !== undefined) data.budget = Number(budget)
 
+	if (preferences !== undefined) {
+		validateTripPreferences(preferences)
+		data.preferences = preferences
+	}
+
 	const updatedTrip = await prisma.trip.update({
 		where: { id: tripId },
 		data,
 	})
 
 	return updatedTrip
-}
-
-
-// -----------------------
-// Update Trip Preferences
-// -----------------------
-export async function addTripPreferences(tripId, preferences = []) {
-
-	const trip = await prisma.trip.findUnique({ where: { id: tripId } })
-
-	const existingPrefs = trip.preference || []
-	const updatedPrefs = Array.from(new Set([...existingPrefs, ...preferences]))
-
-	const updatedTrip = await prisma.trip.update({
-		where: { id: tripId },
-		data: { preference: updatedPrefs },
-	})
-
-	return updatedTrip
-}
-
-export async function addTripDays(tripId, days = []) {
-	if (!days.length) return
-
-	const createdDays = []
-  	for (const d of days) {
-		const day = await prisma.tripDay.create({
-			data: {
-				tripId,
-				dayNumber: d.dayNumber,
-				date: new Date(d.date),
-				items: {
-					create: (d.items || []).map(item => ({
-						name: item.name,
-						description: item.description,
-						type: item.type,
-						startTime: item.startTime ? new Date(item.startTime) : null,
-						endTime: item.endTime ? new Date(item.endTime) : null,
-						costEstimate: item.costEstimate,
-						location: item.locationId ? { connect: { id: item.locationId } } : undefined,
-					})),
-				},
-			},
-			include: { items: true },
-		})
-		createdDays.push(day)
-  	}
-
-	return createdDays
-}
-
-export async function addTripItemsToDay(dayId, items = []) {
-	if (!items.length) return []
-
-	const createdItems = []
-	for (const item of items) {
-		const newItem = await prisma.itineraryItem.create({
-			data: {
-				dayId,
-				name: item.name,
-				description: item.description || null,
-				type: item.type,
-				startTime: item.startTime ? new Date(item.startTime) : null,
-				endTime: item.endTime ? new Date(item.endTime) : null,
-				costEstimate: item.costEstimate || null,
-				location: item.locationId ? { connect: { id: item.locationId } } : undefined,
-			},
-			include: { location: true },
-		})
-		createdItems.push(newItem)
-	}
-
-	return createdItems
 }
 
 export async function addTripAccommodations(tripId, accommodations = []) {
@@ -216,9 +155,7 @@ export async function addTripAccommodations(tripId, accommodations = []) {
 // ----------------------
 // Delete Trip
 // ----------------------
-export async function deleteTrip(ownerId, tripId) {
-	await getUserTripOrThrow(ownerId, tripId)
-
+export async function deleteTrip(tripId) {
 	await prisma.trip.delete({
 		where: { id: tripId },
 	})

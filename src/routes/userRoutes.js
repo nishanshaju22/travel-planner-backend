@@ -12,7 +12,7 @@ router.get('/showBucketList/:userId', showBucketListController)
 
 router.delete('/:userId/showBucketList/:place', deleteBucketListController)
 
-router.post('/sendFriendsRequest', sendFriendsRequestController)
+router.post('/sendFriendRequest', sendFriendsRequestController)
 
 router.put('/acceptRequest', acceptRequestController)
 

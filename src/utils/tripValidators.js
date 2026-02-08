@@ -1,4 +1,5 @@
 import { prisma } from '../config/db.js'
+import { TripPreference } from '@prisma/client'
 
 export function validateFutureDate(dateInput) {
 	const date = new Date(dateInput)
@@ -24,19 +25,46 @@ export function getDayRange(date) {
 	return { start, end }
 }
 
-export async function getUserTripOrThrow(ownerId, tripId) {
+export async function getUserTripOrThrow(userId, tripId) {
 	const trip = await prisma.trip.findFirst({
 		where: {
 			id: tripId,
-			ownerId,
+			OR: [
+				{ ownerId: userId },
+				{ members: { some: { userId } } },
+			],
 		},
-		include: { members: true },
+		include: {
+			members: {
+				include: {
+					user: {
+						select: {
+							id: true,
+							name: true,
+							email: true,
+							createdAt: true,
+							updatedAt: true,
+						},
+					},
+				},
+			},
+			accommodations: {
+				include: { location: true },
+			},
+			days: {
+				include: {
+					items: {
+						include: { location: true },
+					},
+				},
+			},
+		},
 	})
 
-	if (!trip) throw new Error('Trip not found.')
-
+	if (!trip) throw new Error('Trip not found or access denied')
 	return trip
 }
+
 
 
 export async function assertNoTripOnDate(ownerId, date, excludeTripId = null) {
@@ -84,4 +112,24 @@ export async function validateFriends(ownerId, memberIds = []) {
 	if (invalidMembers.length > 0) {
 		throw new Error('All members must be friends of the trip owner.')
 	}
+}
+
+export function validateTripPreferences(preferences = []) {
+	if (!Array.isArray(preferences)) {
+		throw new Error('Preferences must be an array')
+	}
+
+	const validPreferences = Object.values(TripPreference)
+
+	const invalidPreferences = preferences.filter(
+		pref => !validPreferences.includes(pref),
+	)
+
+	if (invalidPreferences.length > 0) {
+		throw new Error(
+			`Invalid trip preferences: ${invalidPreferences.join(', ')}`,
+		)
+	}
+
+	return true
 }
