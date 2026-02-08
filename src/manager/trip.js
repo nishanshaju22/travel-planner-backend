@@ -17,7 +17,7 @@ export async function createTrip(
 	plannedDate,
 	plannedDuration,
 	memberIds = [],
-	budget,
+	budget = 0,
 	preferences = [],
 ) {
 	const date = validateFutureDate(plannedDate)
@@ -40,12 +40,12 @@ export async function createTrip(
 			ownerId,
 			plannedDate: date,
 			plannedDuration: Number(plannedDuration),
-			budget: budget !== undefined ? Number(budget) : null,
-			preferences: preferences.length > 0 ? preferences : [],
+			budget: Number(budget),
+			preference: preferences.length > 0 ? preferences : [],
 			members: {
 				create: [
 					{ userId: ownerId, role: 'OWNER' },
-					...memberIds.map(id => ({
+					...(memberIds || []).map(id => ({
 						userId: id,
 						role: 'VIEWER',
 					})),
