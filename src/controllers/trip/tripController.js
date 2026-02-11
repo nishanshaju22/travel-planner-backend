@@ -4,9 +4,9 @@ import {
 	getTrip,
 	deleteTrip,
 	updateTripBasics,
-} from '../manager/trip.js'
+} from '../../manager/Trip/trip.js'
 
-import { assertUserIsTripOwner } from '../utils/tripValidators.js'
+import { assertUserIsTripOwner } from '../../utils/tripValidators.js'
 
 async function createTripController(req, res) {
 	const ownerId = req.user.id

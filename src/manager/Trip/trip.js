@@ -1,4 +1,4 @@
-import { prisma } from '../config/db.js'
+import { prisma } from '../../config/db.js'
 import {
 	validateFutureDate,
 	getUserTripOrThrow,
@@ -6,7 +6,7 @@ import {
 	validateFriends,
 	assertUserIsTripOwner,
 	validateTripPreferences,
-} from '../utils/tripValidators.js'
+} from '../../utils/tripValidators.js'
 
 // ----------------------
 // Create Trip
@@ -127,30 +127,6 @@ export async function updateTripBasics(tripId, { name, plannedDate, plannedDurat
 
 	return updatedTrip
 }
-
-export async function addTripAccommodations(tripId, accommodations = []) {
-	if (!accommodations.length) return
-
-	const created = []
-	for (const a of accommodations) {
-		const accom = await prisma.accommodation.create({
-			data: {
-				tripId,
-				name: a.name,
-				type: a.type,
-				checkIn: new Date(a.checkIn),
-				checkOut: new Date(a.checkOut),
-				cost: a.cost ? Number(a.cost) : null,
-				location: { connect: { id: a.locationId } },
-			},
-			include: { location: true },
-		})
-		created.push(accom)
-	}
-
-	return created
-}
-
 
 // ----------------------
 // Delete Trip

@@ -133,3 +133,11 @@ export function validateTripPreferences(preferences = []) {
 
 	return true
 }
+
+export async function assertAccommodationBelongsToTrip(accommodationId, tripId) {
+	const accom = await prisma.accommodation.findFirst({
+		where: { id: accommodationId, tripId },
+	})
+	if (!accom) throw new Error('Accommodation not found for this trip')
+	return accom
+}
