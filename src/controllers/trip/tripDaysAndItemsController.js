@@ -4,6 +4,7 @@ import {
 	getTripDays,
 	updateTripItem,
 	deleteTripItem,
+	findLocation,
 } from '../../manager/Trip/tripDaysAndItems.js'
 
 import { assertUserIsTripOwner } from '../../utils/tripValidators.js'
@@ -96,10 +97,22 @@ async function deleteTripItemController(req, res) {
 	}
 }
 
+async function findLocationController(req, res) {
+	const name  = req.query.name
+
+	try {
+		const result = await findLocation(name)
+		return res.status(200).json({ status: 'success', data: result })
+	} catch (error) {
+		return res.status(400).json({ error: error.message })
+	}
+}
+
 export {
 	syncTripDaysWithPlanController,
 	addTripItemsController,
 	getTripDaysController,
 	updateTripItemController,
 	deleteTripItemController,
+	findLocationController,
 }

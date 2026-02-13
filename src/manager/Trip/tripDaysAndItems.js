@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db.js'
+import { LocationType } from '@prisma/client'
 
 // ------------------------------
 // initialise Trip Days and item
@@ -83,6 +84,103 @@ export async function syncTripDaysWithPlan(tripId) {
 			orderBy: { dayNumber: 'asc' },
 		})
 	})
+}
+
+export async function findLocation(name) {
+	if (!name || name.trim().length < 2) {
+		return []
+	}
+
+	const search = name.trim()
+
+	const dbResults = await prisma.location.findMany({
+		where: {
+			name: {
+				startsWith: search,
+				mode: 'insensitive',
+			},
+		},
+		take: 5,
+	})
+
+	if (dbResults.length >= 5) {
+		return dbResults.map(loc => ({
+			name: loc.name,
+			lat: loc.lat,
+			lon: loc.lon,
+			type: loc.type,
+		}))
+	}
+
+	const response = await fetch(
+		`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&format=json&limit=5`,
+		{
+			headers: {
+				'User-Agent': 'Travel_Buddy',
+			},
+		},
+	).then(res => res.json())
+
+	const existingNames = new Set(
+		dbResults.map(l => l.name.toLowerCase()),
+	)
+
+	const apiResults = response
+		.filter((val) => val.type !== 'administrative')
+		.filter((val) =>
+			!existingNames.has(val.display_name.toLowerCase()),
+		)
+		.map((val) => ({
+			name: val.display_name,
+			lat: val.lat,
+			lon: val.lon,
+			type: val.addresstype,
+		}))
+
+	return [
+		...dbResults.map(loc => ({
+			name: loc.name,
+			lat: loc.lat,
+			lon: loc.lon,
+			type: loc.type,
+		})),
+		...apiResults,
+	]
+}
+
+export async function createLocation(address, lon, lat, type) {
+	if (!address) {
+		throw new Error('Invalid Address. Please provide a valid Address')
+	}
+
+	if (!type) {
+		throw new Error('Invalid Type. Please provide a valid Type')
+	}
+
+	if (!lon || !lat) {
+		throw new Error('Please provide a longitude and latitude')
+	}
+
+	const validType = Object.values(LocationType)
+
+	if (!validType.includes(type)) {
+		throw new Error(`The Trip of Type ${type} is Invalid, please choose a valid type`)
+	}
+
+	const location = await prisma.location.upsert({
+		where: {
+			name: address,
+		},
+		update: {},
+		create: {
+			name: address,
+			type: type,
+			latitude: lat,
+			longitude: lon,
+		},
+	})
+
+	return location.id
 }
 
 export async function addTripItemsToDay(dayId, items = []) {
