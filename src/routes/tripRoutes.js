@@ -28,7 +28,7 @@ router.post('/', createTripController)
 
 router.get('/', getAllTripsController)
 
-router.get('/findLocation', findLocationController);
+router.get('/findLocation', findLocationController)
 
 router.get('/:tripId', getTripController)
 

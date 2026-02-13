@@ -115,5 +115,5 @@ export {
 	getTripDaysController,
 	updateTripItemController,
 	deleteTripItemController,
-	findLocationController
+	findLocationController,
 }
