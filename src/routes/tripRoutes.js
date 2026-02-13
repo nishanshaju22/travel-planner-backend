@@ -15,6 +15,7 @@ import {
 	addTripDaysController,
 	addTripItemsController,
 	deleteTripItemController,
+	findLocationController,
 	getTripDaysController,
 	updateTripItemController,
 } from '../controllers/tripDaysAndItemsController.js'
@@ -26,6 +27,8 @@ router.use(authMiddleware)
 router.post('/', createTripController)
 
 router.get('/', getAllTripsController)
+
+router.get('/findLocation', findLocationController);
 
 router.get('/:tripId', getTripController)
 
@@ -48,5 +51,6 @@ router.get('/:tripId/days', getTripDaysController)
 router.patch('/:tripId/items/:itemId', updateTripItemController)
 
 router.delete('/:tripId/items/:itemId', deleteTripItemController)
+
 
 export default router

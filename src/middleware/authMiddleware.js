@@ -12,15 +12,15 @@ export async function authMiddleware(req, res, next) {
 
 	try {
 		const decoded = jwt.verify(token, process.env.JWT)
-
+		
 		const user = await prisma.user.findUnique({
 			where: { id: decoded.id },
 		})
-
+		
 		if (!user) {
 			return res.status(401).json({ error: 'User no longer exists' })
 		}
-
+		
 		req.user = user
 		next()
 	} catch (err) {
