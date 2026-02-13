@@ -2,7 +2,7 @@ import {
 	addTripMembers,
 	removeTripMember,
 	updateTripMemberRole,
-} from '../manager/tripMembers.js'
+} from '../../manager/Trip/tripMembers.js'
 
 
 async function addTripMembersController(req, res) {

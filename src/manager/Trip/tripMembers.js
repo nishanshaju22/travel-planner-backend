@@ -1,8 +1,8 @@
-import { prisma } from '../config/db.js'
+import { prisma } from '../../config/db.js'
 import {
 	validateFriends,
 	assertUserIsTripOwner,
-} from '../utils/tripValidators.js'
+} from '../../utils/tripValidators.js'
 
 // ----------------------
 // Update Trip Members

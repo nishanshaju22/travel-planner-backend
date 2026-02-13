@@ -1,37 +1,89 @@
-import { prisma } from '../config/db.js'
+import { prisma } from '../../config/db.js'
 import { LocationType } from '@prisma/client'
 
-// ------------------------
-// Add Trip Days and item
-// ------------------------
-export async function addTripDays(tripId, days = []) {
-	if (!days.length) return
-
-	const createdDays = []
-  	for (const d of days) {
-		const day = await prisma.tripDay.create({
-			data: {
-				tripId,
-				dayNumber: d.dayNumber,
-				date: new Date(d.date),
-				items: {
-					create: (d.items || []).map(item => ({
-						name: item.name,
-						description: item.description,
-						type: item.type,
-						startTime: item.startTime ? new Date(item.startTime) : null,
-						endTime: item.endTime ? new Date(item.endTime) : null,
-						costEstimate: item.costEstimate,
-						location: item.locationId ? { connect: { id: item.locationId } } : undefined,
-					})),
-				},
-			},
-			include: { items: true },
+// ------------------------------
+// initialise Trip Days and item
+// ------------------------------
+export async function syncTripDaysWithPlan(tripId) {
+	return prisma.$transaction(async(tx) => {
+		const trip = await tx.trip.findUnique({
+			where: { id: tripId },
+			include: { days: true },
 		})
-		createdDays.push(day)
-  	}
 
-	return createdDays
+		if (!trip) throw new Error('Trip not found')
+
+		const { plannedDate, plannedDuration } = trip
+
+		if (!plannedDate || !plannedDuration) {
+			throw new Error('Trip must have plannedDate and plannedDuration')
+		}
+
+		const startDate = new Date(plannedDate)
+		startDate.setHours(0, 0, 0, 0)
+
+		// Sort existing days by dayNumber
+		const existingDays = [...trip.days].sort(
+			(a, b) => a.dayNumber - b.dayNumber,
+		)
+
+		const duration = plannedDuration
+
+		// 1️⃣ Delete extra days
+		if (existingDays.length > duration) {
+			const extraDays = existingDays.slice(duration)
+
+			await tx.tripDay.deleteMany({
+				where: {
+					id: { in: extraDays.map(d => d.id) },
+				},
+			})
+		}
+
+		// 2️⃣ Update existing days
+		const daysToUpdate = existingDays.slice(0, duration)
+
+		for (let i = 0; i < daysToUpdate.length; i++) {
+			const correctDate = new Date(startDate)
+			correctDate.setDate(startDate.getDate() + i)
+
+			const day = daysToUpdate[i]
+
+			if (
+				day.dayNumber !== i + 1 ||
+				new Date(day.date).getTime() !== correctDate.getTime()
+			) {
+				await tx.tripDay.update({
+					where: { id: day.id },
+					data: {
+						dayNumber: i + 1,
+						date: correctDate,
+					},
+				})
+			}
+		}
+
+		// 3️⃣ Create missing days
+		if (existingDays.length < duration) {
+			for (let i = existingDays.length; i < duration; i++) {
+				const newDate = new Date(startDate)
+				newDate.setDate(startDate.getDate() + i)
+
+				await tx.tripDay.create({
+					data: {
+						tripId,
+						dayNumber: i + 1,
+						date: newDate,
+					},
+				})
+			}
+		}
+
+		return tx.tripDay.findMany({
+			where: { tripId },
+			orderBy: { dayNumber: 'asc' },
+		})
+	})
 }
 
 export async function findLocation(name) {

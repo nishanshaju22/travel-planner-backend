@@ -4,9 +4,9 @@ import {
 	getTrip,
 	deleteTrip,
 	updateTripBasics,
-} from '../manager/trip.js'
+} from '../../manager/Trip/trip.js'
 
-import { assertUserIsTripOwner } from '../utils/tripValidators.js'
+import { assertUserIsTripOwner } from '../../utils/tripValidators.js'
 
 async function createTripController(req, res) {
 	const ownerId = req.user.id
@@ -14,8 +14,7 @@ async function createTripController(req, res) {
 
 	try {
 		const result = await createTrip(ownerId, name, plannedDate,
-			plannedDuration, memberIds,
-			budget, preferences)
+			plannedDuration, memberIds, budget, preferences)
 		return res.status(201).json(result)
 	} catch (error) {
 		return res.status(400).json({ error: error.message })
@@ -72,9 +71,9 @@ async function deleteTripController(req, res) {
 
 
 	try {
-		await getUserTripOrThrow(ownerId, tripId)
+		await assertUserIsTripOwner(ownerId, tripId)
 
-		const result = await deleteTrip(ownerId, tripId)
+		const result = await deleteTrip(tripId)
 		return res.status(200).json(result)
 	} catch (error) {
 		return res.status(404).json({ error: error.message })

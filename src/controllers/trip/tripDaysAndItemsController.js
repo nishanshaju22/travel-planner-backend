@@ -1,27 +1,38 @@
 import {
-	addTripDays,
+	syncTripDaysWithPlan,
 	addTripItemsToDay,
 	getTripDays,
 	updateTripItem,
 	deleteTripItem,
 	findLocation,
-} from '../manager/tripDaysAndItems.js'
+} from '../../manager/Trip/tripDaysAndItems.js'
 
-import { assertUserIsTripOwner } from '../utils/tripValidators.js'
+import { assertUserIsTripOwner } from '../../utils/tripValidators.js'
 
-async function addTripDaysController(req, res) {
-	const tripId = req.params.tripId
-	const { days } = req.body
-
-	if (!Array.isArray(days) || days.length === 0) {
-		return res.status(400).json({ error: 'Days array is required' })
-	}
+async function syncTripDaysWithPlanController(req, res) {
+	const userId = req.user.id
+	const { tripId } = req.params
 
 	try {
 		await assertUserIsTripOwner(userId, tripId)
 
-		const createdDays = await addTripDays(tripId, days)
-		return res.status(201).json({ status: 'success', data: { days: createdDays } })
+		const createdDays = await syncTripDaysWithPlan(tripId)
+
+		return res.status(201).json({
+			status: 'success',
+			data: { days: createdDays },
+		})
+	} catch (error) {
+		return res.status(400).json({ error: error.message })
+	}
+}
+
+async function getTripDaysController(req, res) {
+	const { tripId } = req.params
+
+	try {
+		const days = await getTripDays(tripId)
+		return res.status(200).json({ status: 'success', data: { days } })
 	} catch (error) {
 		return res.status(400).json({ error: error.message })
 	}
@@ -43,23 +54,11 @@ async function addTripItemsController(req, res) {
 	}
 }
 
-async function getTripDaysController(req, res) {
-	const { tripId } = req.params
-
-	try {
-		const days = await getTripDays(tripId)
-		return res.status(200).json({ status: 'success', data: { days } })
-	} catch (error) {
-		return res.status(400).json({ error: error.message })
-	}
-}
-
 async function updateTripItemController(req, res) {
 	const { tripId, itemId } = req.params
 	const data = req.body
 
 	try {
-		// Resolve item → day
 		const item = await prisma.itineraryItem.findUnique({
 			where: { id: itemId },
 			include: { day: true },
@@ -110,7 +109,7 @@ async function findLocationController(req, res) {
 }
 
 export {
-	addTripDaysController,
+	syncTripDaysWithPlanController,
 	addTripItemsController,
 	getTripDaysController,
 	updateTripItemController,

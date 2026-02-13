@@ -1,4 +1,5 @@
 import { prisma } from '../config/db.js'
+import { TripPreference } from '@prisma/client'
 
 export function validateFutureDate(dateInput) {
 	const date = new Date(dateInput)
@@ -118,7 +119,7 @@ export function validateTripPreferences(preferences = []) {
 		throw new Error('Preferences must be an array')
 	}
 
-	const validPreferences = Object.values(prisma.TripPreference)
+	const validPreferences = Object.values(TripPreference)
 
 	const invalidPreferences = preferences.filter(
 		pref => !validPreferences.includes(pref),
@@ -131,4 +132,12 @@ export function validateTripPreferences(preferences = []) {
 	}
 
 	return true
+}
+
+export async function assertAccommodationBelongsToTrip(accommodationId, tripId) {
+	const accom = await prisma.accommodation.findFirst({
+		where: { id: accommodationId, tripId },
+	})
+	if (!accom) throw new Error('Accommodation not found for this trip')
+	return accom
 }
