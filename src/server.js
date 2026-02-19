@@ -8,10 +8,12 @@ import tripRoutes from './routes/tripRoutes.js'
 import notificationRoutes from './routes/notificationRoutes.js'
 import cookieParser from 'cookie-parser'
 import { initWebSocket } from './ws.js'
+import { initMCPServer } from './mcp-server/server.js'
 
 
 config()
 connectDB()
+initMCPServer()
 
 const app = express()
 
